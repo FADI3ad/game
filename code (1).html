@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Data Units Interactive Game for Kids</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@600&display=swap');
+  /* Reset & base */
+  * {
+    box-sizing: border-box;
+    user-select: none;
+  }
+  body {
+    margin: 0; padding: 20px;
+    font-family: 'Poppins', sans-serif;
+    background: linear-gradient(135deg, #d0e6ff 0%, #b6ffd9 100%);
+    color: #333;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  h1 {
+    font-size: 2.5rem;
+    margin-bottom: 8px;
+    color: #4338ca;
+    text-align: center;
+  }
+  p.instruction {
+    max-width: 600px;
+    font-size: 1.25rem;
+    color: #1e293b;
+    text-align: center;
+    margin-bottom: 24px;
+  }
+  .game-container {
+    display: flex;
+    max-width: 900px;
+    width: 100%;
+    background: rgba(255 255 255 / 0.85);
+    border-radius: 20px;
+    box-shadow: 0 8px 24px rgba(67,56,202,0.2);
+    overflow: hidden;
+  }
+  .panel {
+    padding: 24px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+  .panel.left {
+    border-right: 2px solid #4338ca;
+    background: rgba(124,58,237,0.1);
+  }
+  .panel.right {
+    background: rgba(20,184,166,0.1);
+  }
+  .units-title {
+    font-weight: 700;
+    font-size: 1.5rem;
+    color: #4338ca;
+    margin-bottom: 12px;
+  }
+  .draggables, .dropzones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+  }
+  /* Unit blocks */
+  .unit {
+    border-radius: 16px;
+    box-shadow: 0 4px 8px rgba(67,56,202,0.3);
+    text-align: center;
+    font-weight: 700;
+    color: white;
+    cursor: grab;
+    user-select: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 8px;
+    min-width: 48px;
+    min-height: 64px;
+    font-size: 1.2rem;
+    transition: transform 0.2s ease;
+  }
+  .unit:active {
+    cursor: grabbing;
+  }
+  .unit.dragging {
+    opacity: 0.6;
+    transform: scale(1.1);
+    z-index: 1000;
+  }
+  .bit { background: #7c3aed; width: 48px; }
+  .byte { background: #22d3ee; width: 64px; }
+  .kb { background: #14b8a6; width: 80px; }
+  .mb { background: #38bdf8; width: 100px; }
+  .gb { background: #2563eb; width: 120px; }
+  .tb { background: #4338ca; width: 140px; }
+  /* Drop zones */
+  .dropzone {
+    background: rgba(255 255 255 / 0.8);
+    border: 3px dashed #4338ca;
+    border-radius: 24px;
+    min-width: 180px;
+    min-height: 100px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    transition: background-color 0.2s ease;
+  }
+  .dropzone.over {
+    background-color: #a5f3fc;
+    border-color: #14b8a6;
+  }
+  .dropzone-label {
+    position: absolute;
+    top: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-weight: 700;
+    color: #4338ca;
+    background: white;
+    padding: 0 10px;
+    font-size: 1rem;
+  }
+  /* Feedback */
+  .feedback {
+    margin-top: 24px;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #2563eb;
+    min-height: 36px;
+    min-width: 600px;
+    text-align: center;
+  }
+  /* Button */
+  button.next-level {
+    margin-top: 16px;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #22d3ee, #14b8a6);
+    color: white;
+    font-weight: 700;
+    font-size: 1.1rem;
+    cursor: pointer;
+    filter: drop-shadow(0 2px 6px rgba(20,184,166,0.7));
+    transition: transform 0.2s ease;
+  }
+  button.next-level:hover {
+    transform: scale(1.05);
+  }
+  button.next-level:disabled {
+    background: #94a3b8;
+    cursor: not-allowed;
+    filter: none;
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .game-container {
+      flex-direction: column;
+      max-width: 100%;
+    }
+    .panel.left, .panel.right {
+      border: none !important;
+      padding: 16px;
+    }
+  }
+</style>
+</head>
+<body>
+<h1>Data Size Units Interactive Game</h1>
+<p class="instruction" id="instruction">
+Drag the right number of smaller units into the big box to form the bigger unit.<br />
+Complete all levels to learn about Bits, Bytes, KB, MB, GB, and TB!
+</p>
+
+<div class="game-container" aria-live="polite" aria-atomic="true">
+  <section class="panel left" aria-label="Small units to drag">
+    <div class="units-title" id="smallUnitsTitle">Small Units</div>
+    <div class="draggables" id="draggables" role="list" aria-describedby="instruction">
+      <!-- draggable units -->
+    </div>
+  </section>
+  <section class="panel right" aria-label="Drop zone for bigger unit">
+    <div class="units-title" id="bigUnitTitle">Drop Here</div>
+    <div class="dropzone" id="dropzone" tabindex="0" aria-dropeffect="move" aria-describedby="instruction dropzoneInstructions">
+      <div class="dropzone-label" id="dropzoneLabel">Drop units here</div>
+      <!-- dropped units go here -->
+    </div>
+    <div id="dropzoneInstructions" class="sr-only">
+      Drop the correct smaller units here to form the bigger data unit.
+    </div>
+  </section>
+</div>
+
+<div class="feedback" id="feedback" role="alert" aria-live="assertive"></div>
+
+<button class="next-level" id="nextLevelBtn" disabled>Start Game</button>
+
+<script>
+  // Game levels definition with expected counts and unit names
+  const levels = [
+    {
+      smallUnit: 'bit',
+      smallCount: 8,
+      smallLabel: 'Bit (1)',
+      bigUnit: 'byte',
+      bigLabel: 'Byte (8 bits)',
+      smallBoxClass: 'bit',
+      bigBoxClass: 'byte',
+    },
+    {
+      smallUnit: 'byte',
+      smallCount: 1024,
+      smallLabel: 'Byte (1)',
+      bigUnit: 'KB',
+      bigLabel: 'Kilobyte (1024 bytes)',
+      smallBoxClass: 'byte',
+      bigBoxClass: 'kb',
+    },
+    {
+      smallUnit: 'KB',
+      smallCount: 1024,
+      smallLabel: 'Kilobyte (1 KB)',
+      bigUnit: 'MB',
+      bigLabel: 'Megabyte (1024 KB)',
+      smallBoxClass: 'kb',
+      bigBoxClass: 'mb',
+    },
+    {
+      smallUnit: 'MB',
+      smallCount: 1024,
+      smallLabel: 'Megabyte (1 MB)',
+      bigUnit: 'GB',
+      bigLabel: 'Gigabyte (1024 MB)',
+      smallBoxClass: 'mb',
+      bigBoxClass: 'gb',
+    },
+    {
+      smallUnit: 'GB',
+      smallCount: 1024,
+      smallLabel: 'Gigabyte (1 GB)',
+      bigUnit: 'TB',
+      bigLabel: 'Terabyte (1024 GB)',
+      smallBoxClass: 'gb',
+      bigBoxClass: 'tb',
+    }
+  ];
+
+  let currentLevel = -1;
+
+  // Elements references
+  const draggablesContainer = document.getElementById('draggables');
+  const dropzone = document.getElementById('dropzone');
+  const dropzoneLabel = document.getElementById('dropzoneLabel');
+  const smallUnitsTitle = document.getElementById('smallUnitsTitle');
+  const bigUnitTitle = document.getElementById('bigUnitTitle');
+  const feedback = document.getElementById('feedback');
+  const nextLevelBtn = document.getElementById('nextLevelBtn');
+  const instruction = document.getElementById('instruction');
+
+  // Tracker for items dropped
+  let droppedItemsCount = 0;
+
+  // Utility to create a draggable unit block element
+  function createUnitElement(text, className, id) {
+    const el = document.createElement('div');
+    el.className = `unit ${className}`;
+    el.draggable = true;
+    el.textContent = text;
+    if(id) el.id = id;
+    el.setAttribute('role', 'listitem');
+    // Drag events
+    el.addEventListener('dragstart', dragStart);
+    el.addEventListener('touchstart', dragStartTouch, {passive: false});
+    return el;
+  }
+
+  // Populate draggable units on left side for current level
+  function populateDraggables(level) {
+    draggablesContainer.innerHTML = '';
+    // Show a limited number for drag - max 20 blocks for performance & fun
+    let blocks = Math.min(level.smallCount, 20);
+    for(let i=1; i<=blocks; i++) {
+      // Use numbered text for bits/bytes only for first 8 bits, else just unit name
+      const text = level.smallUnit === 'bit' ? i.toString() : level.smallUnit === 'byte' && i <= 8 ? i.toString() : '';
+      draggablesContainer.appendChild(createUnitElement(text || level.smallLabel, level.smallBoxClass, `draggable-${i}`));
+    }
+  }
+
+  // Initialize dropzone for big unit
+  function setupDropzone(level) {
+    dropzoneLabel.textContent = `Drop ${level.smallCount} ${level.smallUnit}${level.smallCount > 1 ? 's' : ''} here to make 1 ${level.bigUnit}`;
+    dropzone.setAttribute('aria-label', `Drop zone for ${level.bigLabel}`);
+    bigUnitTitle.textContent = level.bigLabel;
+    dropzone.innerHTML = '<div class="dropzone-label">' + dropzoneLabel.textContent + '</div>';
+    droppedItemsCount = 0;
+  }
+
+  // Drag & Drop handlers
+  let draggedEl = null;
+
+  function dragStart(e) {
+    draggedEl = e.target;
+    e.dataTransfer.setData('text/plain', e.target.id);
+    e.dataTransfer.effectAllowed = 'move';
+    setTimeout(() => {
+      e.target.classList.add('dragging');
+    }, 0);
+  }
+
+  function dragEnd(e) {
+    if(draggedEl) {
+      draggedEl.classList.remove('dragging');
+      draggedEl = null;
+    }
+  }
+
+  function dragOver(e) {
+    e.preventDefault();
+    dropzone.classList.add('over');
+  }
+
+  function dragLeave(e) {
+    dropzone.classList.remove('over');
+  }
+
+  function drop(e) {
+    e.preventDefault();
+    dropzone.classList.remove('over');
+    const id = e.dataTransfer.getData('text/plain');
+    const dragged = document.getElementById(id);
+    if(dragged && draggablesContainer.contains(dragged)) {
+      // Remove from draggables
+      draggablesContainer.removeChild(dragged);
+      dragged.classList.remove('dragging');
+      dragged.removeAttribute('draggable');
+      dragged.style.cursor = 'default';
+      // Append to dropzone
+      dropzone.appendChild(dragged);
+      droppedItemsCount++;
+      checkCompletion();
+    }
+  }
+
+  // Touch support for dragging (simplified)
+  let touchDragged = null;
+  let touchOffsetX = 0;
+  let touchOffsetY = 0;
+
+  function dragStartTouch(e) {
+    e.preventDefault();
+    touchDragged = e.target;
+    touchDragged.classList.add('dragging');
+    const touch = e.touches[0];
+    const rect = touchDragged.getBoundingClientRect();
+    touchOffsetX = touch.clientX - rect.left;
+    touchOffsetY = touch.clientY - rect.top;
+    document.addEventListener('touchmove', dragMoveTouch, {passive: false});
+    document.addEventListener('touchend', dragEndTouch, {passive: false});
+  }
+  function dragMoveTouch(e) {
+    e.preventDefault();
+    if(!touchDragged) return;
+    const touch = e.touches[0];
+    touchDragged.style.position = 'fixed';
+    touchDragged.style.left = (touch.clientX - touchOffsetX) + 'px';
+    touchDragged.style.top = (touch.clientY - touchOffsetY) + 'px';
+    // Detect dropzone overlap
+    const dzRect = dropzone.getBoundingClientRect();
+    if(touch.clientX > dzRect.left && touch.clientX < dzRect.right &&
+       touch.clientY > dzRect.top && touch.clientY < dzRect.bottom) {
+      dropzone.classList.add('over');
+    } else {
+      dropzone.classList.remove('over');
+    }
+  }
+  function dragEndTouch(e) {
+    e.preventDefault();
+    if(!touchDragged) return;
+    const dzRect = dropzone.getBoundingClientRect();
+    const touch = e.changedTouches[0];
+    touchDragged.style.position = '';
+    touchDragged.style.left = '';
+    touchDragged.style.top = '';
+    touchDragged.classList.remove('dragging');
+    if(touch.clientX > dzRect.left && touch.clientX < dzRect.right &&
+       touch.clientY > dzRect.top && touch.clientY < dzRect.bottom) {
+      // Drop accepted
+      draggablesContainer.removeChild(touchDragged);
+      dropzone.appendChild(touchDragged);
+      droppedItemsCount++;
+      checkCompletion();
+    }
+    dropzone.classList.remove('over');
+    touchDragged = null;
+    document.removeEventListener('touchmove', dragMoveTouch);
+    document.removeEventListener('touchend', dragEndTouch);
+  }
+
+  // Check if player completed the level
+  function checkCompletion() {
+    const level = levels[currentLevel];
+    if (droppedItemsCount === level.smallCount || draggablesContainer.childElementCount === 0) {
+      // Success
+      feedback.style.color = '#059669'; // emerald
+      feedback.textContent = `Great job! You formed 1 ${level.bigLabel}! 🎉`;
+      nextLevelBtn.disabled = false;
+      nextLevelBtn.textContent = currentLevel < levels.length - 1 ? 'Next Level' : 'Finished! Play Again?';
+    } else {
+      feedback.textContent = '';
+      nextLevelBtn.disabled = true;
+    }
+  }
+
+  // Load next level or restart
+  function nextLevel() {
+    if(currentLevel < levels.length - 1) {
+      currentLevel++;
+      feedback.textContent = '';
+      nextLevelBtn.disabled = true;
+      instruction.textContent = `Drag the right number of smaller units into the big box to make 1 ${levels[currentLevel].bigUnit}.`;
+      setupDropzone(levels[currentLevel]);
+      populateDraggables(levels[currentLevel]);
+    } else {
+      // Restart game
+      currentLevel = 0;
+      feedback.textContent = '';
+      instruction.textContent = `Drag the right number of smaller units into the big box to make 1 ${levels[currentLevel].bigUnit}.`;
+      setupDropzone(levels[currentLevel]);
+      populateDraggables(levels[currentLevel]);
+      nextLevelBtn.disabled = true;
+      nextLevelBtn.textContent = 'Next Level';
+    }
+  }
+
+  // Setup listeners
+  function setupListeners() {
+    nextLevelBtn.addEventListener('click', nextLevel);
+    dropzone.addEventListener('dragover', dragOver);
+    dropzone.addEventListener('drop', drop);
+    dropzone.addEventListener('dragleave', dragLeave);
+    dropzone.addEventListener('dragend', dragEnd);
+  }
+
+  // Initialization
+  function init() {
+    currentLevel = -1;
+    nextLevelBtn.disabled = false;
+    nextLevelBtn.textContent = 'Start Game';
+    feedback.textContent = '';
+    smallUnitsTitle.textContent = 'Small Units';
+    bigUnitTitle.textContent = 'Drop Here';
+    draggablesContainer.innerHTML = '';
+    dropzone.innerHTML = '<div class="dropzone-label" id="dropzoneLabel">Drop units here</div>';
+    setupListeners();
+  }
+
+  init();
+
+</script>
+</body>
+</html>
+
